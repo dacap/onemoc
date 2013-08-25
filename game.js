@@ -1,3 +1,4 @@
+"use strict";
 (function () {
     var TILEW = 32;
     var TILEH = 32;
@@ -9,39 +10,25 @@
     var renderer = PIXI.autoDetectRenderer(w, h);
     renderer.view.style.display = "block";
 
-    var score = new function() {
-        var self = this;
-        var container = new PIXI.DisplayObjectContainer();
-        stage.addChild(container);
-        var text;
-        var score = 0;
+    var ballTextures = [];
+    for (var i=0; i<4; ++i)
+        ballTextures[i] = new PIXI.Texture(ballsTexture, { x:TILEW*i, y:0, width:TILEW, height:TILEH });
 
-        self.addScore = function(bonus) {
-            score += bonus;
-        }
+    var tileTextures = [];
+    for (var i=0; i<4; ++i)
+        tileTextures[i] = new PIXI.Texture(tilesTexture, { x:TILEW*i, y:0, width:TILEW, height:TILEH });
 
-        self.removeScore = function(bonus) {
-            score -= bonus;
-        }
-       
-        self.update = function(time) {
-            if (text) {
-                container.removeChild(text);
-                text = null;
-            }
-            text = new PIXI.Text("TIME: " + Math.ceil(10 - (time%10000)/1000) + "\n" +
-                                 "SCORE: " + score,
-                                 { fill: "#fff" });
-            text.position.x = 4;
-            text.position.y = 4;
-            container.addChild(text);
-        }
+    function getRandomColor() {
+        return 1 + Math.floor(2.99*Math.random());
     }
 
     var clock = new function() {
         var self = this;
         var sprites = [];
         var colors = [];
+        var startTime = -1;
+        var clockTime = 0;
+        var currentColor = 0;
 
         var container = new PIXI.DisplayObjectContainer();
         stage.addChild(container);
@@ -51,25 +38,60 @@
         arrowSpr.position.y = 0;
         container.addChild(arrowSpr);
 
-        for (var i=0; i<10; ++i) {
-            colors[i] = 1 + Math.floor(2.99*Math.random());
+        shuffleColors();
 
-            sprites[i] = new PIXI.Sprite(new PIXI.Texture(tilesTexture, { x:TILEW*colors[i], y:0, width:TILEW, height:TILEH }));
-            sprites[i].position.x = TILEW;
-            sprites[i].position.y = i*TILEH+TILEH/2;
-            container.addChild(sprites[i]);
+        function shuffleColors() {
+            for (var i=0; i<10; ++i) {
+                if (sprites[i]) {
+                    container.removeChild(sprites[i]);
+                    delete sprites[i];
+                }
+            }
+
+            var color = getRandomColor();
+            for (var i=0; i<10; ++i) {
+                colors[i] = color;
+                if (i & 1) {
+                    var newColor;
+                    do {
+                        newColor = getRandomColor();
+                    } while (newColor == color);
+                    color = newColor;
+                }
+
+                sprites[i] = new PIXI.Sprite(tileTextures[colors[i]]);
+                sprites[i].position.x = TILEW;
+                sprites[i].position.y = i*TILEH + TILEH/2;
+                container.addChild(sprites[i]);
+            }
         }
 
         self.currentColor = function() {
-            var i = Math.floor(arrowSpr.position.y / TILEH);
-            return colors[i];
+            return colors[currentColor];
         }
 
         self.update = function(time) {
             container.position.x = w/2 - tiles.w()*TILEW/2 - TILEW*2.5;
             container.position.y = h/2 - tiles.h()*TILEH/2 - TILEH;
 
-            arrowSpr.position.y = ((time % 10000) / 1000) * arrowSpr.height;
+            if (startTime < 0)
+                startTime = time;
+
+            clockTime = (time - startTime) / 1000.0;
+            if (clockTime > 10) {
+                clockTime = 0;
+                startTime = time;
+
+                shuffleColors();
+                tiles.clear();
+                player.fillTiles();
+                tiles.regenerate();
+            }
+
+            arrowSpr.position.y = clockTime * arrowSpr.height;
+            currentColor = Math.floor(clockTime);
+            if (currentColor > 9)
+                currentColor = 9;
         }
 
         return self;
@@ -86,6 +108,16 @@
 
         clear();
 
+        var c = 0;
+        for (var i=0; i<data_h; ++i) {
+            for (var j=0; j<data_w; ++j, ++c) {
+                sprites[c] = new PIXI.Sprite(tileTextures[0]);
+                sprites[c].position.x = j*TILEW;
+                sprites[c].position.y = i*TILEH;
+                container.addChild(sprites[c]);
+            }
+        }
+
         function clear() {
             for (var i=0; i<data_h; ++i)
                 for (var j=0; j<data_w; ++j)
@@ -97,6 +129,10 @@
                 if (value == 0 || data[v*data_w + u] == 0)
                     data[v*data_w + u] = value;
             }
+        }
+
+        self.clear = function() {
+            clear();
         }
         
         self.update = function(time) {
@@ -115,29 +151,16 @@
         }
         self.fillPos = function(u, v) {
             put(u, v, 0);
-            put((u-1), v, 1 + Math.floor(2.99*Math.random()));
-            put((u+1), v, 1 + Math.floor(2.99*Math.random()));
-            put(u, (v-1), 1 + Math.floor(2.99*Math.random()));
-            put(u, (v+1), 1 + Math.floor(2.99*Math.random()));
+            put((u-1), v, getRandomColor());
+            put((u+1), v, getRandomColor());
+            put(u, (v-1), getRandomColor());
+            put(u, (v+1), getRandomColor());
         }
         self.regenerate = function() {
-            for (var i=0; i<sprites.length; ++i) {
-                if (sprites[i]) {
-                    sprites[i].parent.removeChild(sprites[i]);
-                    delete sprites[i];
-                }
-            }
-
             var c = 0;
             for (var i=0; i<data_h; ++i) {
                 for (var j=0; j<data_w; ++j, ++c) {
-                    var t = data[i*data_w + j];
-                    if (t) {
-                        sprites[c] = new PIXI.Sprite(new PIXI.Texture(tilesTexture, { x:TILEW*t, y:0, width:TILEW, height:TILEH }));
-                        sprites[c].position.x = j*TILEW;
-                        sprites[c].position.y = i*TILEH;
-                        container.addChild(sprites[c]);
-                    }
+                    sprites[c].setTexture(tileTextures[data[c]]);
                 }
             }
         }
@@ -149,9 +172,9 @@
         var self = this;
         var x = 0;
         var y = 0;
-        var ballTextures = [];
-        for (var i=0; i<4; ++i)
-            ballTextures[i] = new PIXI.Texture(ballsTexture, { x:TILEW*i, y:0, width:TILEW, height:TILEH });
+        var lastColor = -1;
+        var comboCounter = 0;
+        var failCounter = 0;
 
         var ballSprite = new PIXI.Sprite(ballTextures[0]);
         stage.addChild(ballSprite);
@@ -184,16 +207,64 @@
                 y = v;
 
                 var color = tiles.getAt(x+tiles.cx(), y+tiles.cy());
-                if (clock.currentColor() == color)
-                    score.addScore(10);
-                else
-                    score.removeScore(20);
+                if (clock.currentColor() == color) {
+                    if (color == lastColor)
+                        comboCounter++;
+                    else {
+                        comboCounter = 1;
+                    }
+
+                    score.addScore(10 * comboCounter);
+                    failCounter = 0;
+                }
+                else {
+                    failCounter++;
+                    score.removeScore(20 * failCounter);
+                }
 
                 self.fillTiles();
             }
         }
 
         return self;
+    }
+
+    // function ScoreDecorator() {
+    //     var self = this;
+
+    //     self.update = function(time) {
+    //     }
+
+    //     return self;
+    // }
+
+    var score = new function() {
+        var self = this;
+        var container = new PIXI.DisplayObjectContainer();
+        stage.addChild(container);
+        var text;
+        var score = 0;
+
+        self.addScore = function(bonus) {
+            score += bonus;
+        }
+
+        self.removeScore = function(bonus) {
+            score -= bonus;
+        }
+       
+        self.update = function(time) {
+            if (text) {
+                container.removeChild(text);
+                text = null;
+            }
+            text = new PIXI.Text("TIME: " + Math.ceil(10 - (time%10000)/1000) + "\n" +
+                                 "SCORE: " + score,
+                                 { fill: "#fff" });
+            text.position.x = 4;
+            text.position.y = 4;
+            container.addChild(text);
+        }
     }
 
     function init() {
