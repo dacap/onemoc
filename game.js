@@ -6,7 +6,8 @@
     var h = 768;
     var ballsTexture = PIXI.Texture.fromImage("assets/balls.png");
     var tilesTexture = PIXI.Texture.fromImage("assets/tiles.png");
-    var stage = new PIXI.Stage(0x000000, true);
+    var stage = new PIXI.Stage(0x000000);
+    stage.setInteractive(true);
     var renderer = PIXI.autoDetectRenderer(w, h);
     renderer.view.style.display = "block";
 
@@ -327,8 +328,8 @@
     }
 
     function resize() {
-        w = $(window).width() - 16;
-        h = $(window).height() - 16;
+        w = window.innerWidth - 16;
+        h = window.innerHeight - 16;
         renderer.resize(w, h);
     }
 
@@ -348,8 +349,11 @@
     function left() { player.left(); }
     function right() { player.right(); }
 
-    $(init);
+    document.addEventListener("DOMContentLoaded", function(event) {
+        init();
+    });
+
     resize();
-    $(window).resize(resize);
+    window.onresize = resize;
     window.onorientationchange = resize;
 })();
