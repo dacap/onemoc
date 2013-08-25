@@ -176,7 +176,6 @@
         var lastColor = -1;
         var comboCounter = 0;
         var failCounter = 0;
-
         var ballSprite = new PIXI.Sprite(ballTextures[0]);
         stage.addChild(ballSprite);
 
@@ -192,8 +191,10 @@
         self.update = function(time) {
             ballSprite.setTexture(ballTextures[clock.currentColor()]);
             
-            ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
-            ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+            if (ballSprite.position.x == 0) {
+                ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
+                ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+            }
         }
         self.up = function() { move(x, y-1); }
         self.down = function() { move(x, y+1); }
@@ -211,8 +212,15 @@
                 x = u;
                 y = v;
 
-                ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
-                ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+                new TWEEN.Tween({ x: ballSprite.position.x,
+                                  y: ballSprite.position.y })
+                .to({ x: tiles.container().position.x + (tiles.cx()+x)*TILEW,
+                      y: tiles.container().position.y + (tiles.cy()+y)*TILEH }, 100)
+                .onUpdate(function() {
+                    ballSprite.position.x = this.x;
+                    ballSprite.position.y = this.y;
+                })
+                .start();
 
                 var color = tiles.getAt(x+tiles.cx(), y+tiles.cy());
                 if (clock.currentColor() == color) {
