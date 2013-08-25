@@ -6,7 +6,7 @@
     var h = 768;
     var ballsTexture = PIXI.Texture.fromImage("assets/balls.png");
     var tilesTexture = PIXI.Texture.fromImage("assets/tiles.png");
-    var stage = new PIXI.Stage(0x000000);
+    var stage = new PIXI.Stage(0x000000, true);
     stage.setInteractive(true);
     var renderer = PIXI.autoDetectRenderer(w, h);
     renderer.view.style.display = "block";
@@ -249,7 +249,13 @@
             lastColor = -1;
             comboCounter = 0;
         }
-        
+
+        self.updateByResize = function() {
+            tiles.update();
+            ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
+            ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+        }
+
         return self;
     }
 
@@ -330,6 +336,7 @@
     function resize() {
         w = window.innerWidth - 16;
         h = window.innerHeight - 16;
+        player.updateByResize();
         renderer.resize(w, h);
     }
 
