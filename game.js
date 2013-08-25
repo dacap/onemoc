@@ -1,11 +1,16 @@
 "use strict";
 (function () {
+    var MENU = 1;
+    var GAME = 2;
+    var gameState = MENU;
+    var gameStartTime = 0;
     var TILEW = 32;
     var TILEH = 32;
     var w = 1024;
     var h = 768;
     var ballsTexture = PIXI.Texture.fromImage("assets/balls.png");
     var tilesTexture = PIXI.Texture.fromImage("assets/tiles.png");
+    var menuStage = new PIXI.Stage(0x000000, false);
     var stage = new PIXI.Stage(0x000000, false);
     var renderer = PIXI.autoDetectRenderer(w, h);
     renderer.view.style.display = "block";
@@ -131,8 +136,6 @@
         var container = new PIXI.DisplayObjectContainer();
         stage.addChild(container);
 
-        clear();
-
         var c = 0;
         for (var i=0; i<data_h; ++i) {
             for (var j=0; j<data_w; ++j, ++c) {
@@ -156,6 +159,9 @@
             }
         }
 
+        self.reset = function() {
+            clear();
+        }
         self.clearTiles = function() {
             var c = 0;
             for (var i=0; i<data_h; ++i)
@@ -164,7 +170,6 @@
 
             clear();
         }
-        
         self.update = function(time) {
             container.position.x = w/2 - data_w*TILEW/2;
             container.position.y = h/2 - data_h*TILEH/2;
@@ -200,18 +205,27 @@
 
     var player = new function() {
         var self = this;
-        var x = 0;
-        var y = 0;
-        var lastColor = -1;
-        var comboCounter = 0;
-        var failCounter = 0;
+        var x, y;
+        var lastColor;
+        var comboCounter;
+        var failCounter;
         var ballSprite = new PIXI.Sprite(ballTextures[0]);
         stage.addChild(ballSprite);
 
+        self.reset = function() {
+            x = 0;
+            y = 0;
+            lastColor = -1;
+            comboCounter = 0;
+            failCounter = 0;
+
+            ballSprite.position.x = 0;
+
+            self.fillTiles();
+        }
         self.pos = function() {
             return ballSprite.position;
         }
-
         self.fillTiles = function() {
             tiles.fillPos(x+tiles.cx(),
                           y+tiles.cy());
@@ -229,6 +243,15 @@
         self.down = function() { move(x, y+1); }
         self.left = function() { move(x-1, y); }
         self.right = function() { move(x+1, y); }
+        self.resetCombo = function() {
+            lastColor = -1;
+            comboCounter = 0;
+        }
+        self.updateByResize = function() {
+            tiles.update();
+            ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
+            ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+        }
 
         function canMove(u, v) {
             u += tiles.cx();
@@ -273,17 +296,6 @@
             }
         }
 
-        self.resetCombo = function() {
-            lastColor = -1;
-            comboCounter = 0;
-        }
-
-        self.updateByResize = function() {
-            tiles.update();
-            ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
-            ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
-        }
-
         return self;
     }
 
@@ -321,18 +333,19 @@
         var container = new PIXI.DisplayObjectContainer();
         stage.addChild(container);
         var text;
-        var score = 0;
+        var score;
 
+        self.reset = function() {
+            score = 0;
+        }
         self.addScore = function(bonus) {
             score += bonus;
             new ScoreDecorator("+" + bonus, "#fff", player.pos());
         }
-
         self.removeScore = function(bonus) {
             score -= bonus;
             new ScoreDecorator("-" + bonus, "#f00", player.pos());
         }
-       
         self.update = function(time) {
             if (text) {
                 container.removeChild(text);
@@ -347,18 +360,57 @@
         }
     }
 
+    var menu = new function() {
+        var self = this;
+        var title = new PIXI.Text("1 MINUTE OF COLORS",
+                                 { strokeThickness: 4,
+                                   stroke: "#ff0",
+                                   fill: "#00",
+                                   align: "center" })
+        var copy = new PIXI.Text("(C) 2013 DAVID CAPELLO",
+                                 { strokeThickness: 4,
+                                   stroke: "#ff0",
+                                   fill: "#00",
+                                   align: "center" })
+        var text = new PIXI.Text("PRESS ANY KEY\nCLICK OR TAP TO START",
+                                 { strokeThickness: 4,
+                                   stroke: "#ff0",
+                                   fill: "#00",
+                                   align: "center" });
+        menuStage.addChild(title);
+        menuStage.addChild(copy);
+        menuStage.addChild(text);
+        var y = 0;
+
+        function update() { y = this.y; }
+
+        self.update = function(time) {
+            title.position.x = w/2 - title.width/2;
+            title.position.y = h/2 - title.height*2;
+            copy.position.x = w - copy.width;
+            copy.position.y = h - copy.height;
+            text.position.x = w/2 - text.width/2;
+            text.position.y = h/2 + Math.sin(Math.PI*time/1000)*16;
+        }
+    }
+
+    function startGame() {
+        gameState = GAME;
+        gameStartTime = -1;
+
+        tiles.reset();
+        player.reset();
+        score.reset();
+    }
+
     function init() {
         Mousetrap.bind('up', up);
         Mousetrap.bind('down', down);
         Mousetrap.bind('left', left);
         Mousetrap.bind('right', right);
+        Mousetrap.bind('esc', esc);
 
-        document.body.appendChild(renderer.view);
-
-        player.fillTiles();
-
-        resize();
-        requestAnimationFrame(update);
+        window.addEventListener("KeyDown", anyKey);
 
         Hammer(renderer.view)
             .on("swipeleft", left)
@@ -366,8 +418,12 @@
             .on("swipeup", up)
             .on("swipedown", down)
             .on("tap", function(ev) {
-                if (ev.gesture.touches &&
-                    ev.gesture.touches.length > 0) {
+                if (gameState == MENU) {
+                    startGame();
+                }
+                else if (gameState == GAME &&
+                         ev.gesture.touches &&
+                         ev.gesture.touches.length > 0) {
                     var dx = ev.gesture.touches[0].pageX - (player.pos().x+TILEW/2);
                     var dy = ev.gesture.touches[0].pageY - (player.pos().y+TILEH/2);
                     if (Math.abs(dx) > Math.abs(dy)) {
@@ -380,6 +436,11 @@
                     }
                 }
             });
+
+        document.body.appendChild(renderer.view);
+
+        resize();
+        requestAnimationFrame(update);
     }
 
     function resize() {
@@ -390,20 +451,40 @@
     }
 
     function update(time) {
-        score.update(time);
-        clock.update(time);
-        tiles.update(time);
-        player.update(time);
+        switch (gameState) {
+            case MENU:
+                menu.update(time);
+                renderer.render(menuStage);
+                break;
+            case GAME:
+                if (gameStartTime < 0)
+                    gameStartTime = time;
+                var t = time - gameStartTime;
+                score.update(t);
+                clock.update(t);
+                tiles.update(t);
+                player.update(t);
+                renderer.render(stage);
+                break;
+        }
 
-        renderer.render(stage);
         requestAnimFrame(update);
         TWEEN.update();
     }
 
-    function up() { player.up(); }
-    function down() { player.down(); }
-    function left() { player.left(); }
-    function right() { player.right(); }
+    function up() { if (gameState == GAME) player.up(); }
+    function down() { if (gameState == GAME) player.down(); }
+    function left() { if (gameState == GAME) player.left(); }
+    function right() { if (gameState == GAME) player.right(); }
+    function esc() {
+        if (gameState == GAME) {
+            gameState = MENU;
+        }
+    }
+    function anyKey() {
+        if (gameState == MENU)
+            startGame();
+    }
 
     document.addEventListener("DOMContentLoaded", function(event) {
         init();
