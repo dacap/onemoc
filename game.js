@@ -6,8 +6,7 @@
     var h = 768;
     var ballsTexture = PIXI.Texture.fromImage("assets/balls.png");
     var tilesTexture = PIXI.Texture.fromImage("assets/tiles.png");
-    var stage = new PIXI.Stage(0x000000, true);
-    stage.setInteractive(true);
+    var stage = new PIXI.Stage(0x000000, false);
     var renderer = PIXI.autoDetectRenderer(w, h);
     renderer.view.style.display = "block";
 
@@ -331,6 +330,27 @@
 
         resize();
         requestAnimationFrame(update);
+
+        Hammer(renderer.view)
+            .on("swipeleft", left)
+            .on("swiperight", right)
+            .on("swipeup", up)
+            .on("swipedown", down)
+            .on("tap", function(ev) {
+                if (ev.gesture.touches &&
+                    ev.gesture.touches.length > 0) {
+                    var dx = ev.gesture.touches[0].pageX - (player.pos().x+TILEW/2);
+                    var dy = ev.gesture.touches[0].pageY - (player.pos().y+TILEH/2);
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx < 0) left();
+                        else right();
+                    }
+                    else {
+                        if (dy < 0) up();
+                        else down();
+                    }
+                }
+            });
     }
 
     function resize() {
