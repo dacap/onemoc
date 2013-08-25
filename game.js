@@ -83,7 +83,7 @@
                 startTime = time;
 
                 shuffleColors();
-                tiles.clear();
+                tiles.clearTiles();
                 player.fillTiles();
                 player.resetCombo();
                 tiles.regenerate();
@@ -94,6 +94,30 @@
             if (currentColor > 9)
                 currentColor = 9;
         }
+
+        return self;
+    }
+
+    function FadeTile(spriteSrc) {
+        var self = this;
+        var sprite = new PIXI.Sprite(spriteSrc.texture);
+        sprite.position.x = spriteSrc.position.x + TILEW/2;
+        sprite.position.y = spriteSrc.position.y + TILEH/2;
+        sprite.pivot.x = TILEW/2;
+        sprite.pivot.y = TILEH/2;
+        spriteSrc.parent.addChild(sprite);
+        
+        var tween = new TWEEN.Tween({ scale: 1 })
+            .to({ scale: 0 }, 1000)
+            .easing(TWEEN.Easing.Exponential.Out)
+            .onUpdate(function() {
+                sprite.scale.x = this.scale;
+                sprite.scale.y = this.scale;
+            })
+            .onComplete(function() {
+                sprite.parent.removeChild(sprite);
+            })
+            .start();
 
         return self;
     }
@@ -132,7 +156,12 @@
             }
         }
 
-        self.clear = function() {
+        self.clearTiles = function() {
+            var c = 0;
+            for (var i=0; i<data_h; ++i)
+                for (var j=0; j<data_w; ++j, ++c)
+                    new FadeTile(sprites[c]);
+
             clear();
         }
         
