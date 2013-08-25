@@ -85,6 +85,7 @@
                 shuffleColors();
                 tiles.clear();
                 player.fillTiles();
+                player.resetCombo();
                 tiles.regenerate();
             }
 
@@ -179,6 +180,10 @@
         var ballSprite = new PIXI.Sprite(ballTextures[0]);
         stage.addChild(ballSprite);
 
+        self.pos = function() {
+            return ballSprite.position;
+        }
+
         self.fillTiles = function() {
             tiles.fillPos(x+tiles.cx(),
                           y+tiles.cy());
@@ -206,6 +211,9 @@
                 x = u;
                 y = v;
 
+                ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
+                ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
+
                 var color = tiles.getAt(x+tiles.cx(), y+tiles.cy());
                 if (clock.currentColor() == color) {
                     if (color == lastColor)
@@ -213,11 +221,13 @@
                     else {
                         comboCounter = 1;
                     }
+                    lastColor = color;
 
                     score.addScore(10 * comboCounter);
                     failCounter = 0;
                 }
                 else {
+                    lastColor = -1;
                     failCounter++;
                     score.removeScore(20 * failCounter);
                 }
@@ -226,17 +236,42 @@
             }
         }
 
+        self.resetCombo = function() {
+            lastColor = -1;
+            comboCounter = 0;
+        }
+        
         return self;
     }
 
-    // function ScoreDecorator() {
-    //     var self = this;
+    function ScoreDecorator(text, color, pos) {
+        var self = this;
+        var text;
 
-    //     self.update = function(time) {
-    //     }
+        text = new PIXI.Text(text, { strokeThickness: 2,
+                                     stroke: "#000",
+                                     fill: color,
+                                     align: "center" });
+        text.position.x = pos.x;
+        text.position.y = pos.y-TILEH/2;
+        stage.addChild(text);
+        
+        var tween = new TWEEN.Tween({ x: text.position.x,
+                                      y: text.position.y })
+            .to({ y: text.position.y-TILEH*0.75 }, 250)
+            .easing(TWEEN.Easing.Exponential.Out)
+            .onUpdate(function() {
+                text.position.x = this.x;
+                text.position.y = this.y;
+            })
+            .chain(new TWEEN.Tween({}).to({}, 100)
+                   .onComplete(function() {
+                       stage.removeChild(text);
+                   })) 
+            .start();
 
-    //     return self;
-    // }
+        return self;
+    }
 
     var score = new function() {
         var self = this;
@@ -247,10 +282,12 @@
 
         self.addScore = function(bonus) {
             score += bonus;
+            new ScoreDecorator("+" + bonus, "#fff", player.pos());
         }
 
         self.removeScore = function(bonus) {
             score -= bonus;
+            new ScoreDecorator("-" + bonus, "#f00", player.pos());
         }
        
         self.update = function(time) {
@@ -295,6 +332,7 @@
 
         renderer.render(stage);
         requestAnimFrame(update);
+        TWEEN.update();
     }
 
     function up() { player.up(); }
