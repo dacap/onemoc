@@ -32,10 +32,17 @@
 soundManager.setup({
   url: '/swf-files/',
   onready: function() {
-    var mySound = soundManager.createSound({
+    function loopSound(sound) {
+      sound.play({
+        onfinish: function() {
+          loopSound(sound);
+        }
+      });
+    }
+    var music = soundManager.createSound({
       url: 'assets/music.mp3'
     });
-    mySound.play();
+    loopSound(music);
   }
 });
 </script>
