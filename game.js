@@ -1,5 +1,6 @@
 "use strict";
 (function () {
+    var tweetScore;
     var MENU = 1;
     var HOWTOPLAY = 2;
     var GAME = 3;
@@ -118,8 +119,6 @@
                     lastTime = time;
 
                 clockTime += (time - lastTime) / 1000.0;
-                // Test time
-                // clockTime += 10 * (time - lastTime) / 1000.0;
                 lastTime = time;
 
                 if (clockTime > 10) {
@@ -316,6 +315,11 @@
                 gameOverText.position.x = w/2 - gameOverText.width/2;
                 gameOverText.position.y = h/2 - gameOverText.height/2;
             }
+
+            if (tweetScore.style.display == "block") {
+                tweetScore.style.left = (w/2 - tweetScore.offsetWidth/2) + "px";
+                tweetScore.style.top = (h/2 + tweetScore.offsetHeight*2) + "px";
+            }
         }
         self.up = function() { move(x, y-1); }
         self.down = function() { move(x, y+1); }
@@ -331,6 +335,12 @@
             ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
         }
         self.gameOver = function() {
+            tweetScore.style.display = "block";
+            tweetScore.href =
+                "https://twitter.com/home?status=I've+made+" +
+                score.points() +
+                "+points+on+ONEMOC+http://dacap.com.ar/games/onemoc/+cc+@davidcapello";
+
             gameOver = true;
             gameOverText = new PIXI.Text("YOU HAVE MADE\n" +
                                          score.points() + " POINTS",
@@ -678,6 +688,7 @@
     }
 
     function init() {
+        tweetScore = document.getElementById("tweet");
         window.addEventListener("keydown", anyKey);
 
         Hammer(renderer.view)
@@ -776,7 +787,10 @@
                     case 38: up(); break;
                     case 39: right(); break;
                     case 40: down(); break;
-                    case 27: gameState = MENU; break;
+                    case 27:
+                        gameState = MENU;
+                        tweetScore.style.display = "none";
+                        break;
                 }
                 break;
         }
