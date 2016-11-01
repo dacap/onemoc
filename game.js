@@ -164,7 +164,7 @@
         sprite.pivot.x = TILEW/2;
         sprite.pivot.y = TILEH/2;
         spriteSrc.parent.addChild(sprite);
-        
+
         var tween = new TWEEN.Tween({ scale: 1 })
             .to({ scale: 0 }, 1000)
             .easing(TWEEN.Easing.Exponential.Out)
@@ -305,7 +305,7 @@
         }
         self.update = function(time) {
             ballSprite.setTexture(ballTextures[clock.currentColor()]);
-            
+
             if (ballSprite.position.x == 0) {
                 ballSprite.position.x = tiles.container().position.x + (tiles.cx()+x)*TILEW;
                 ballSprite.position.y = tiles.container().position.y + (tiles.cy()+y)*TILEH;
@@ -339,7 +339,7 @@
             tweetScore.href =
                 "https://twitter.com/home?status=I've+made+" +
                 score.points() +
-                "+points+on+ONEMOC+http://dacap.com.ar/games/onemoc/+cc+@davidcapello";
+                "+points+on+ONEMOC+http://davidcapello.com/games/onemoc/+cc+@davidcapello";
 
             gameOver = true;
             gameOverText = new PIXI.Text("YOU HAVE MADE\n" +
@@ -353,7 +353,7 @@
 
         function canMove(u, v) {
             u += tiles.cx();
-            v += tiles.cy(); 
+            v += tiles.cy();
             return (u >= 0 && v >= 0 && u < tiles.w() && v < tiles.h());
         }
 
@@ -408,7 +408,7 @@
         text.position.x = pos.x;
         text.position.y = pos.y-TILEH/2;
         stage.addChild(text);
-        
+
         var tween = new TWEEN.Tween({ x: text.position.x,
                                       y: text.position.y })
             .to({ y: text.position.y-TILEH*0.75 }, 250)
@@ -420,7 +420,7 @@
             .chain(new TWEEN.Tween({}).to({}, 100)
                    .onComplete(function() {
                        stage.removeChild(text);
-                   })) 
+                   }))
             .start();
 
         return self;
